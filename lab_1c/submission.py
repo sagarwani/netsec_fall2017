@@ -214,7 +214,6 @@ class EchoServerProtocol(asyncio.Protocol):
 def basicUnitTest():
 
     loop = asyncio.set_event_loop(TestLoopEx())
-    p_logging.EnablePresetLogging(p_logging.PRESET_TEST)
     server = EchoServerProtocol()
     server.invite('Bob','California', 1, 1,'10.0.0.1',65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
     client = EchoClientProtocol(loop)
