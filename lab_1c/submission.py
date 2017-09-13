@@ -101,6 +101,7 @@ class EchoClientProtocol(asyncio.Protocol):
             if(pkt.DEFINITION_IDENTIFIER == "lab1b.calling.busy") and self.state==0:
                 print('CLIENT -> SERVER: Call start request\n')
                 print('SERVER -> CLIENT: Server is busy currently. Please try again later.')
+                self.transport.close()
             elif(pkt.DEFINITION_IDENTIFIER=='lab1b.calling.invite') and self.state==0:
                 print('SERVER -> CLIENT: Call Invite from {}'.format(pkt.name))
                 print('\t\t\t\t ',pkt)
@@ -127,11 +128,12 @@ class EchoClientProtocol(asyncio.Protocol):
                 self.transport.write(byep)
             else:
                 print('Incorrect packet received. Please check the protocol on server side.')
+                self.transport.close()
 
     def connection_lost(self, exc):
         self.transport = None
         print("\nEchoClient Connection was Lost with Server because: {}".format(exc))
-        self.transport.close()
+        #self.transport.close()
 
 class EchoServerProtocol(asyncio.Protocol):
     name='test'; location='test'; xccpv='1'; ip='test'; port=23; codec=['testlist']; ip1='test'; ip2='test'; port1=0; port2=0;available=1
@@ -204,8 +206,10 @@ class EchoServerProtocol(asyncio.Protocol):
             elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.bye') and self.state==2:
                 print('CLIENT -> SERVER: Call disconnect request from Alice.')
                 print('\t\t\t\t ', packet)
+                self.transport.close()
             else:
                 print('Incorrect packet received. Please check the protocol on server side.')
+                self.transport.close()
 
 def basicUnitTest():
 
