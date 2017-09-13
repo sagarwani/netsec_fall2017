@@ -11,7 +11,7 @@ from playground.common import logging as p_logging
 class startcall(PacketType):
     DEFINITION_IDENTIFIER = "lab1b.calling.start"
     DEFINITION_VERSION = "1.0"
-    FIELDS = [ ('flag', STRING)]
+    FIELDS = [ ('flag', BOOL)]
 
 
 #Calling INVITE Packet Class Definition
@@ -19,6 +19,7 @@ class invite(PacketType):
     DEFINITION_IDENTIFIER = "lab1b.calling.invite"
     DEFINITION_VERSION = "1.0"
     FIELDS = [ ("name", STRING),
+               ('available', BOOL),
                ("location", STRING),
                ("ip", STRING),
                ("port", UINT32),
@@ -31,6 +32,7 @@ class response(PacketType):
     DEFINITION_IDENTIFIER = "lab1b.calling.response"
     DEFINITION_VERSION = "1.0"
     FIELDS = [ ("name", STRING),
+               ("available", BOOL),
                ("location", STRING),
                ("ip", STRING),
                ("port", UINT32),
@@ -53,28 +55,27 @@ class session(PacketType):
 class bye(PacketType):
     DEFINITION_IDENTIFIER = "lab1b.calling.bye"
     DEFINITION_VERSION = "1.0"
-    FIELDS = [ ("flag", STRING)
+    FIELDS = [ ("flag", BOOL)
                ]
 
 class EchoClientProtocol(asyncio.Protocol):
-
     name='test'
+    available=1
     location='test'
     xccpv='1'
     ip='test'
     port=23
     codec=['testlist']
+    state=0
 
-    pkx = startcall()
-    pkx.flag = 'test'
-
-    def response(self, name, location, xccpv, ip, port, codec):
+    def response(self, name, available, location, xccpv, ip, port, codec):
         self.name = name
         self.location = location
         self.xccpv = xccpv
         self.ip = ip
         self.port = port
         self.codec = codec
+        self.available = available
 
     def __init__(self, loop):
         self.transport = None
@@ -82,43 +83,59 @@ class EchoClientProtocol(asyncio.Protocol):
         self._deserializer = PacketType.Deserializer()
 
     def connection_made(self, transport):
-        print("EchoClient is now Connected to the Server")
+        print("EchoClient is now Connected to the Server\n")
         self.transport = transport
-
-        pkx1 = self.pkx.__serialize__()
+        pkx = startcall()
+        pkx.flag=1
+        pkx1 = pkx.__serialize__()
         self.transport.write(pkx1)
 
     def data_received(self, data):
         self._deserializer.update(data)
         for pkt in self._deserializer.nextPackets():
-            if(pkt.DEFINITION_IDENTIFIER=='lab1b.calling.invite'):
-                print('CLIENT RECEIVED: Call Invite from Bob')
-                print(pkt)
+            if(pkt.DEFINITION_IDENTIFIER=='lab1b.calling.invite') and self.state==0:
+                print('CLIENT RECEIVED: Call Invite from {}'.format(pkt.name))
+                print('                ',pkt)
+                self.state +=1
                 res = response()
-                res.name = self.name; res.location = self.location; res.xccpv = self.xccpv; res.ip = self.ip; res.port = self.port; res.codec = self.codec
+                res.name = self.name; res.location = self.location; res.xccpv = self.xccpv; res.ip = self.ip; res.port = self.port; res.codec = self.codec; res.available = self.available
                 pky = res.__serialize__()
                 self.transport.write(pky)
 
-            elif(pkt.DEFINITION_IDENTIFIER=='lab1b.calling.session'):
-                print('CLIENT RECEIVED: Call session start from Bob')
-                print(pkt)
+            elif(pkt.DEFINITION_IDENTIFIER=='lab1b.calling.session') and self.state==1:
+                print('CLIENT RECEIVED: Call session start from Bob.(Server)')
+                print('                ', pkt)
+                print('')
+                print('                 Session Details:')
+                print('                 Caller IP address:{}'.format(pkt.callingip))
+                print('                 Caller Port:{}'.format(pkt.callingport))
+                print('                 Called User IP address:{}'.format(pkt.calledip))
+                print('                 Called User port:{}'.format(pkt.calledport))
+                print('                 Codec elected for the session:{}'.format(pkt.codec))
+                print('                 Payload size for the codec:{}Kb\n'.format(pkt.payload))
                 byepkt = bye()
-                byepkt.flag = 'test'
+                byepkt.flag = 0
                 byep = byepkt.__serialize__()
                 self.transport.write(byep)
+            else:
+                print('Incorrect packet received. Please check the protocol on server side.')
 
     def connection_lost(self, exc):
         self.transport = None
-        print("EchoClient Connection was Lost with Server because {}".format(exc))
+        print("\nEchoClient Connection was Lost with Server because {}".format(exc))
         self.loop.stop()
 
 class EchoServerProtocol(asyncio.Protocol):
-    name='test'; location='test'; xccpv='1'; ip='test'; port=23; codec=['testlist']; ip1='test'; ip2='test'; port1=0; port2=0
+    name='test'; location='test'; xccpv='1'; ip='test'; port=23; codec=['testlist']; ip1='test'; ip2='test'; port1=0; port2=0;available=1
     payload = {'G711u':64, 'G729':8, 'G711a':64, 'G722':84, 'OPUS': 124}
-
-    def invite(self, name, location, xccpv, ip, port, codec):
+    output1 = StringIO
+    output2 = StringIO
+    lst1 = []
+    state=0
+    def invite(self, name, location, available, xccpv, ip, port, codec):
         self.name = name
         self.location = location
+        self.available = available
         self.xccpv = xccpv
         self.ip = ip
         self.port = port
@@ -132,8 +149,9 @@ class EchoServerProtocol(asyncio.Protocol):
         self.codec = codec
         self.payload = payload
 
-    def __init__(self):
+    def __init__(self, loop):
         self.transport = None
+        self.loop = loop
         self._deserializer = PacketType.Deserializer()
 
     def connection_made(self, transport):
@@ -143,39 +161,47 @@ class EchoServerProtocol(asyncio.Protocol):
     def data_received(self, data):
         self._deserializer.update(data)
         for packet in self._deserializer.nextPackets():
-            if(packet.DEFINITION_IDENTIFIER == "lab1b.calling.start"):
-                print('SERVER RECEIVED: Call start request from Alice.')
-                print(packet)
+            if(packet.DEFINITION_IDENTIFIER == "lab1b.calling.start") and (self.available==1) and self.state==0:
+                print('SERVER RECEIVED: Call start request')
+                print('                ', packet)
+                self.state +=1
                 inv = invite()
-                inv.name = self.name; inv.location = self.location; inv.xccpv = self.xccpv; inv.ip = self.ip; inv.port = self.port; inv.codec = self.codec
+                inv.name = self.name; inv.location = self.location; inv.xccpv = self.xccpv; inv.ip = self.ip; inv.port = self.port; inv.codec = self.codec; inv.available = self.available
+                self.output1 = inv.ip
+                self.output2 = inv.port
+                self.lst1 = inv.codec
                 pkbytes = inv.__serialize__()
                 self.transport.write(pkbytes)
-
-            elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.response'):
-                print('SERVER RECEIVED: Call response from Alice.')
-                print(packet)
+            elif(packet.DEFINITION_IDENTIFIER == "lab1b.calling.start") and (self.available==0) and self.state==0:
+                print('Server is busy. Please try again later.')
+            elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.response') and self.state==1:
+                print('SERVER RECEIVED: Call response from {}'.format(packet.name))
+                print('                ', packet)
+                self.state +=1
                 ses = session()
-                ses.ip1=inv.ip; ses.ip2=packet.ip; ses.port1 = inv.port; ses.port2 = packet.port
-                ses.codec = 'G711'
-                ses.payload = 8
-                '''for codec in list(inv.codec):
+                ses.callingip=self.output1; ses.calledip=packet.ip; ses.callingport = self.output2; ses.calledport = packet.port
+                for codec in list(self.lst1):
                     for codec1 in list(packet.codec):
                         if codec==codec1:
                             ses.codec=codec
-                    ses.payload = int(self.payload[ses.codec])'''
+                ses.payload = int(self.payload[ses.codec])
                 pkbytes = ses.__serialize__()
                 self.transport.write(pkbytes)
-            elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.bye'):
+            elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.bye') and self.state==2:
                 print('SERVER RECEIVED: Call disconnect request Alice.')
-                print(packet)
+                print('                ', packet)
+                self.transport.close()
+            else:
+                print('Incorrect packet received. Please check the protocol on server side.')
+                self.transport.close()
 
 def basicUnitTest():
 
     loop = asyncio.get_event_loop()
-    server = EchoServerProtocol()
-    server.invite('Alice','California',1,'10.0.0.1',65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
+    server = EchoServerProtocol(loop)
+    server.invite('Bob','California', 1, 1,'10.0.0.1',65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
     client = EchoClientProtocol(loop)
-    client.response('Bob', 'WashingtonDC', 1, '10.0.0.2', 65002, ["G729", "G722a"])
+    client.response('Alice', 'WashingtonDC',1, 1, '192.168.1.254', 45532, ["G711u", "G722a"])
     transportToServer = MockTransportToProtocol(server)
     transportToClient = MockTransportToProtocol(client)
     server.connection_made(transportToClient)
