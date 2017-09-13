@@ -102,7 +102,7 @@ class EchoClientProtocol(asyncio.Protocol):
                 print('SERVER -> CLIENT: Server is busy currently. Please try again later.')
             elif(pkt.DEFINITION_IDENTIFIER=='lab1b.calling.invite') and self.state==0:
                 print('SERVER -> CLIENT: Call Invite from {}'.format(pkt.name))
-                print('                 ',pkt)
+                print('\t\t\t\t ',pkt)
                 self.state +=1
                 res = response()
                 res.name = self.name; res.location = self.location; res.xccpv = self.xccpv; res.ip = self.ip; res.port = self.port; res.codec = self.codec; res.available = self.available
@@ -111,15 +111,15 @@ class EchoClientProtocol(asyncio.Protocol):
 
             elif(pkt.DEFINITION_IDENTIFIER=='lab1b.calling.session') and self.state==1:
                 print('SERVER -> CLIENT: Call session start from Bob.(Server)')
-                print('                 ', pkt)
+                print('\t\t\t\t ', pkt)
                 print('')
-                print('                  Session Established with below details:')
-                print('                  Caller IP address:{}'.format(pkt.callingip))
-                print('                  Caller Port:{}'.format(pkt.callingport))
-                print('                  Called User IP address:{}'.format(pkt.calledip))
-                print('                  Called User port:{}'.format(pkt.calledport))
-                print('                  Codec elected for the session:{}'.format(pkt.codec))
-                print('                  Payload size for the codec:{}Kb\n'.format(pkt.payload))
+                print('SESSION PACKET:\t\tSession Established with below details:')
+                print('\t\t\t\t\tCaller IP address:{}'.format(pkt.callingip))
+                print('\t\t\t\t\tCaller Port:{}'.format(pkt.callingport))
+                print('\t\t\t\t\tCalled User IP address:{}'.format(pkt.calledip))
+                print('\t\t\t\t\tCalled User port:{}'.format(pkt.calledport))
+                print('\t\t\t\t\tCodec elected for the session:{}'.format(pkt.codec))
+                print('\t\t\t\t\tPayload size for the codec:{}Kb\n'.format(pkt.payload))
                 byepkt = bye()
                 byepkt.flag = 0
                 byep = byepkt.__serialize__()
@@ -170,7 +170,7 @@ class EchoServerProtocol(asyncio.Protocol):
         for packet in self._deserializer.nextPackets():
             if(packet.DEFINITION_IDENTIFIER == "lab1b.calling.start") and (self.available==1) and self.state==0:
                 print('CLIENT -> SERVER: Call start request')
-                print('                 ', packet)
+                print('\t\t\t\t ', packet)
                 self.state +=1
                 inv = invite()
                 inv.name = self.name; inv.location = self.location; inv.xccpv = self.xccpv; inv.ip = self.ip; inv.port = self.port; inv.codec = self.codec; inv.available = self.available
@@ -185,7 +185,7 @@ class EchoServerProtocol(asyncio.Protocol):
                 self.transport.write(pkbytes)
             elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.response') and self.state==1:
                 print('CLIENT -> SERVER: Call response from {}'.format(packet.name))
-                print('                 ', packet)
+                print('\t\t\t\t ', packet)
                 self.state +=1
                 ses = session()
                 ses.callingip=self.output1; ses.calledip=packet.ip; ses.callingport = self.output2; ses.calledport = packet.port
@@ -201,7 +201,7 @@ class EchoServerProtocol(asyncio.Protocol):
                     pkbytes = ses.__serialize__()
                     self.transport.write(pkbytes)
             elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.bye') and self.state==2:
-                print('CLIENT -> SERVER: Call disconnect request Alice.')
+                print('CLIENT -> SERVER: Call disconnect request from Alice.')
                 print('                 ', packet)
             else:
                 print('Incorrect packet received. Please check the protocol on server side.')
