@@ -82,8 +82,9 @@ class EchoClientProtocol(asyncio.Protocol):
         self.codec = codec
         self.available = available
 
-    def __init__(self):
+    def __init__(self, loop):
         self.transport = None
+        self.loop = loop
         self._deserializer = PacketType.Deserializer()
 
     def connection_made(self, transport):
@@ -202,19 +203,21 @@ class EchoServerProtocol(asyncio.Protocol):
                     self.transport.write(pkbytes)
             elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.bye') and self.state==2:
                 print('CLIENT -> SERVER: Call disconnect request from Alice.')
-                print('                 ', packet)
+                print('\t\t\t\t ', packet)
             else:
                 print('Incorrect packet received. Please check the protocol on server side.')
 
 def basicUnitTest():
 
     loop = asyncio.set_event_loop(TestLoopEx())
+    p_logging.EnablePresetLogging(p_logging.PRESET_TEST)
     server = EchoServerProtocol()
     server.invite('Bob','California', 1, 1,'10.0.0.1',65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
-    client = EchoClientProtocol()
+    client = EchoClientProtocol(loop)
     client.response('Alice', 'WashingtonDC',1, 1, '192.168.1.254', 45532, ["G722a", "G729"])
-    transportToServer = MockTransportToProtocol(server)
-    transportToClient = MockTransportToProtocol(client)
+    #transportToServer = MockTransportToProtocol(server)
+    #transportToClient = MockTransportToProtocol(client)
+    transportToServer, transportToClient = MockTransportToProtocol.CreateTransportPair(client, server)
     server.connection_made(transportToClient)
     client.connection_made(transportToServer)
 
