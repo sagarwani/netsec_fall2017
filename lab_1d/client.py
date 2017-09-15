@@ -71,6 +71,7 @@ class EchoClientProtocol(asyncio.Protocol):
     codec=['testlist']
     state=0
 
+
     def response(self, name, available, location, xccpv, ip, port, codec):
         self.name = name
         self.location = location
@@ -80,9 +81,13 @@ class EchoClientProtocol(asyncio.Protocol):
         self.codec = codec
         self.available = available
 
-    def __init__(self, loop):
+    def __init__(self):
         self.transport = None
-        self.loop = loop
+        #self.loop = loop
+        '''pkx = startcall()
+        pkx.flag=1
+        pkx1 = pkx.__serialize__()
+        self.transport.write(pkx1)'''
         self._deserializer = PacketType.Deserializer()
 
     def connection_made(self, transport):
@@ -134,14 +139,22 @@ class EchoClientProtocol(asyncio.Protocol):
         print("\nEchoClient Connection was Lost with Server because: {}".format(exc))
         #self.transport.close()
 
+class initiate():
+
+    def send_first_packet(self):
+        return EchoClientProtocol()
+
 if __name__ == "__main__":
 
     #p_logging.EnablePresetLogging(p_logging.PRESET_TEST)
     loop = asyncio.get_event_loop()
+    lux = initiate()
+    #lux.send_start_packet(1)
     loop.set_debug(enabled=True)
     #dux = EchoClientProtocol(loop)
     #dux.response('Alice', 'WashingtonDC', 1, 1, '192.168.1.254', 45532, ["G722a", "G729"])
-    playground.getConnector().create_playground_connection(lambda: EchoClientProtocol(), '20174.1.1.1' , 8888)
+    playground.getConnector().create_playground_connection(lux.send_first_packet, '20174.1.1.1' , 8888)
+    #conn = loop.create_connection(lambda: EchoClientProtocol(), '127.0.0.1', port=8000)
     #loop.run_until_complete()
     loop.run_forever()
     loop.close()
