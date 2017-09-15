@@ -142,13 +142,14 @@ if __name__ == "__main__":
 
     #p_logging.EnablePresetLogging(p_logging.PRESET_TEST)
     loop = asyncio.get_event_loop()
-    loop.set_debug(enabled=True)
+    #loop.set_debug(enabled=True)
     #lux = EchoServerProtocol()
     #lux.invite('Bob', 'California', 1, 1, '10.0.0.1', 65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
-    playground.getConnector().create_playground_server(lambda: EchoServerProtocol(), 8888)
-    #server = loop.run_until_complete()
+    coro = playground.getConnector().create_playground_server(lambda: EchoServerProtocol(), 8888)
+    #conn = loop.create_server(lambda: EchoServerProtocol(), port=8000)
+    loop.run_until_complete(coro)
     #print('\nListening on {}:'.format(server.sockets[0].getsockname()))
-    print('\nPress Ctrl+C to terminate the process')
+    #print('\nPress Ctrl+C to terminate the process')
     try:
         loop.run_forever()
     except KeyboardInterrupt:
