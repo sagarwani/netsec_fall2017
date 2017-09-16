@@ -55,12 +55,13 @@ class session(PacketType):
                ("calledport", UINT32),
                ("codec", STRING),
                ("payload", INT)]
-
+# Busy pakcet class
 class busy(PacketType):
     DEFINITION_IDENTIFIER = "lab1b.calling.busy"
     DEFINITION_VERSION = "1.0"
     FIELDS = [  ]
 
+#Client Protocol Class
 class EchoClientProtocol(asyncio.Protocol):
     name='test'
     available=1
@@ -70,7 +71,6 @@ class EchoClientProtocol(asyncio.Protocol):
     port=23
     codec=['testlist']
     state=0
-
 
     def response(self, name, available, location, xccpv, ip, port, codec):
         self.name = name
@@ -116,10 +116,10 @@ class EchoClientProtocol(asyncio.Protocol):
                 self.transport.write(pky)
 
             elif(pkt.DEFINITION_IDENTIFIER=='lab1b.calling.session') and self.state==1:
-                print('Packet 4 SERVER -> CLIENT: Call session start from Bob.(Server)')
+                print('\nPacket 4 SERVER -> CLIENT: Call session start from Bob.(Server)')
                 print('\t\t\t\t ', pkt)
                 print('')
-                print('SESSION PACKET:\t\tSession Established with below details:')
+                print('SESSION PACKET DETAILS:\t\tSession Established with below details:')
                 print('\t\t\t\t\tCaller IP address:{}'.format(pkt.callingip))
                 print('\t\t\t\t\tCaller Port:{}'.format(pkt.callingport))
                 print('\t\t\t\t\tCalled User IP address:{}'.format(pkt.calledip))
@@ -139,10 +139,12 @@ class EchoClientProtocol(asyncio.Protocol):
         print("\nEchoClient Connection was Lost with Server because: {}".format(exc))
         #self.transport.close()
 
+#First Packet Calling Class
 class initiate():
 
     def send_first_packet(self):
         return EchoClientProtocol()
+
 
 if __name__ == "__main__":
 
@@ -156,5 +158,9 @@ if __name__ == "__main__":
     conn = playground.getConnector().create_playground_connection(lux.send_first_packet, '20174.1.1.1' , 8888)
     #conn = loop.create_connection(lambda: EchoClientProtocol(), '127.0.0.1', port=8000)
     loop.run_until_complete(conn)
-    loop.run_forever()
+    print('\nPress Ctrl+C to terminate the process\n')
+    try:
+        loop.run_forever()
+    except KeyboardInterrupt:
+        pass
     loop.close()
