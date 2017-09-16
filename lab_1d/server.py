@@ -3,6 +3,7 @@ from playground.network.packet.fieldtypes import STRING,INT, BOOL, UINT32, ListF
 import asyncio
 from io import StringIO
 import playground
+import sys
 from playground.asyncio_lib.testing import TestLoopEx
 from playground.network.testing import MockTransportToStorageStream
 from playground.network.testing import MockTransportToProtocol
@@ -56,11 +57,13 @@ class session(PacketType):
                ("codec", STRING),
                ("payload", INT)]
 
+# Busy packet calling class
 class busy(PacketType):
     DEFINITION_IDENTIFIER = "lab1b.calling.busy"
     DEFINITION_VERSION = "1.0"
     FIELDS = [  ]
 
+# Server Protocol Class
 class EchoServerProtocol(asyncio.Protocol):
     name='test'; location='test'; xccpv='1'; ip='test'; port=23; codec=['testlist']; ip1='test'; ip2='test'; port1=0; port2=0;available=1
     payload = {'G711u':64, 'G729':8, 'G711a':64, 'G722':84, 'OPUS': 124}
@@ -114,7 +117,7 @@ class EchoServerProtocol(asyncio.Protocol):
                 pkbytes = bus.__serialize__()
                 self.transport.write(pkbytes)
             elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.response') and self.state==1:
-                print('Packet 3 CLIENT -> SERVER: Call response from {}'.format(packet.name))
+                print('\nPacket 3 CLIENT -> SERVER: Call response from {}'.format(packet.name))
                 print('\t\t\t\t ', packet)
                 self.state +=1
                 ses = session()
@@ -131,12 +134,14 @@ class EchoServerProtocol(asyncio.Protocol):
                     pkbytes = ses.__serialize__()
                     self.transport.write(pkbytes)
             elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.bye') and self.state==2:
-                print('Packet 5 CLIENT -> SERVER: Call disconnect request from Alice.')
+                print('\nPacket 5 CLIENT -> SERVER: Call disconnect request from Alice.')
                 print('\t\t\t\t ', packet)
                 self.transport.close()
             else:
                 print('Incorrect packet received. Please check the protocol on server side.')
                 self.transport.close()
+
+
 
 if __name__ == "__main__":
 
@@ -147,10 +152,11 @@ if __name__ == "__main__":
     #lux.invite('Bob', 'California', 1, 1, '10.0.0.1', 65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
     conn = playground.getConnector().create_playground_server(lambda: EchoServerProtocol() , 8888)
     #conn = loop.create_server(lambda: EchoServerProtocol(), port=8000)
-    loop.run_until_complete(conn)
-    #print('\nListening on {}:'.format(server.sockets[0].getsockname()))
-    #print('\nPress Ctrl+C to terminate the process')
+    server = loop.run_until_complete(conn)
+    print("Echo Server Started at {}".format(server.sockets[0].gethostname()))
+    print('\nPress Ctrl+C to terminate the process')
     try:
         loop.run_forever()
     except KeyboardInterrupt:
         pass
+    loop.close()
