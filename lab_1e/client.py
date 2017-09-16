@@ -145,7 +145,7 @@ class initiate():
     def send_first_packet(self):
         return EchoClientProtocol()
 
-class PassThrough(playground.network.common.StackingProtocol):
+class PassThrough1(playground.network.common.StackingProtocol):
 
     def __init__(self):
         self.transport = None
@@ -160,7 +160,7 @@ class PassThrough(playground.network.common.StackingProtocol):
         self.higherProtocol().data_received(data)
 
 
-class PassTransport(playground.network.common.StackingProtocol):
+class PassThrough2(playground.network.common.StackingProtocol):
     def __init__(self):
         self.transport = None
 
@@ -180,7 +180,7 @@ if __name__ == "__main__":
     lux = initiate()
     #lux.send_start_packet(1)
 
-    f = playground.network.common.StackingProtocolFactory(lambda: PassThrough(), lambda: PassTransport())
+    f = playground.network.common.StackingProtocolFactory(lambda: PassThrough1(), lambda: PassThrough2())
     ptConnector = playground.Connector(protocolStack=f)
     playground.setConnector("passthrough", ptConnector)
 
