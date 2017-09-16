@@ -99,7 +99,7 @@ class EchoServerProtocol(asyncio.Protocol):
         self._deserializer.update(data)
         for packet in self._deserializer.nextPackets():
             if(packet.DEFINITION_IDENTIFIER == "lab1b.calling.start") and (self.available==1) and self.state==0:
-                print('CLIENT -> SERVER: Call start request')
+                print('Packet 1 CLIENT -> SERVER: Call start request')
                 print('\t\t\t\t ', packet)
                 self.state +=1
                 inv = invite()
@@ -114,7 +114,7 @@ class EchoServerProtocol(asyncio.Protocol):
                 pkbytes = bus.__serialize__()
                 self.transport.write(pkbytes)
             elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.response') and self.state==1:
-                print('CLIENT -> SERVER: Call response from {}'.format(packet.name))
+                print('Packet 3 CLIENT -> SERVER: Call response from {}'.format(packet.name))
                 print('\t\t\t\t ', packet)
                 self.state +=1
                 ses = session()
@@ -131,7 +131,7 @@ class EchoServerProtocol(asyncio.Protocol):
                     pkbytes = ses.__serialize__()
                     self.transport.write(pkbytes)
             elif(packet.DEFINITION_IDENTIFIER=='lab1b.calling.bye') and self.state==2:
-                print('CLIENT -> SERVER: Call disconnect request from Alice.')
+                print('Packet 5 CLIENT -> SERVER: Call disconnect request from Alice.')
                 print('\t\t\t\t ', packet)
                 self.transport.close()
             else:
@@ -145,9 +145,9 @@ if __name__ == "__main__":
     #loop.set_debug(enabled=True)
     #lux = EchoServerProtocol()
     #lux.invite('Bob', 'California', 1, 1, '10.0.0.1', 65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
-    coro = playground.getConnector().create_playground_server(lambda: EchoServerProtocol(), 8888)
+    conn = playground.getConnector().create_playground_server(lambda: EchoServerProtocol() , 8888)
     #conn = loop.create_server(lambda: EchoServerProtocol(), port=8000)
-    loop.run_until_complete(coro)
+    loop.run_until_complete(conn)
     #print('\nListening on {}:'.format(server.sockets[0].getsockname()))
     #print('\nPress Ctrl+C to terminate the process')
     try:
