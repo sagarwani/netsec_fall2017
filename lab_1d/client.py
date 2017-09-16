@@ -107,7 +107,7 @@ class EchoClientProtocol(asyncio.Protocol):
                 print('SERVER -> CLIENT: Server is busy currently. Please try again later.')
                 self.transport.close()
             elif(pkt.DEFINITION_IDENTIFIER=='lab1b.calling.invite') and self.state==0:
-                print('SERVER -> CLIENT: Call Invite from {}'.format(pkt.name))
+                print('Packet 2 SERVER -> CLIENT: Call Invite from {}'.format(pkt.name))
                 print('\t\t\t\t ',pkt)
                 self.state +=1
                 res = response()
@@ -116,7 +116,7 @@ class EchoClientProtocol(asyncio.Protocol):
                 self.transport.write(pky)
 
             elif(pkt.DEFINITION_IDENTIFIER=='lab1b.calling.session') and self.state==1:
-                print('SERVER -> CLIENT: Call session start from Bob.(Server)')
+                print('Packet 4 SERVER -> CLIENT: Call session start from Bob.(Server)')
                 print('\t\t\t\t ', pkt)
                 print('')
                 print('SESSION PACKET:\t\tSession Established with below details:')
