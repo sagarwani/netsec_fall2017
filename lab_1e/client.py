@@ -81,9 +81,9 @@ class EchoClientProtocol(asyncio.Protocol):
         self.codec = codec
         self.available = available
 
-    def __init__(self):
+    def __init__(self, loop):
         self.transport = None
-        #self.loop = loop
+        self.loop = loop
         '''pkx = startcall()
         pkx.flag=1
         pkx1 = pkx.__serialize__()
@@ -130,6 +130,7 @@ class EchoClientProtocol(asyncio.Protocol):
                 byepkt.flag = 0
                 byep = byepkt.__serialize__()
                 self.transport.write(byep)
+                self.loop.stop()
             else:
                 print('Incorrect packet received. Please check the protocol on server side.')
                 self.transport.close()
@@ -137,13 +138,18 @@ class EchoClientProtocol(asyncio.Protocol):
     def connection_lost(self, exc):
         self.transport = None
         print("\nEchoClient Connection was Lost with Server because: {}".format(exc))
-        #self.transport.close()
+        self.transport.close()
+        self.loop.stop()
 
 #First Packet Calling Class
 class initiate():
 
+    def __init__(self, loop):
+        self.loop = loop
+
     def send_first_packet(self):
-        return EchoClientProtocol()
+        self.loop = loop
+        return EchoClientProtocol(self.loop)
 
 class PassThrough1(playground.network.common.StackingProtocol):
 
@@ -159,6 +165,11 @@ class PassThrough1(playground.network.common.StackingProtocol):
         print("\nData Received at PassThrough1. Sending it to higher layer.\n")
         self.higherProtocol().data_received(data)
 
+    def connection_lost(self, exc):
+        self.transport = None
+        print("\nPassThrough1 Connection was Lost with Server because: {}".format(exc))
+        self.transport.close()
+
 
 class PassThrough2(playground.network.common.StackingProtocol):
     def __init__(self):
@@ -173,20 +184,22 @@ class PassThrough2(playground.network.common.StackingProtocol):
         print("\nData Received at PassThrough2. Sending it to higher layer.\n")
         self.higherProtocol().data_received(data)
 
+    def connection_lost(self, exc):
+        self.transport = None
+        print("\nPassThrough2 Connection was Lost with Server because: {}".format(exc))
+        self.transport.close()
+
 if __name__ == "__main__":
 
     #p_logging.EnablePresetLogging(p_logging.PRESET_TEST)
     loop = asyncio.get_event_loop()
-    lux = initiate()
-    #lux.send_start_packet(1)
-
+    lux = initiate(loop)
     f = playground.network.common.StackingProtocolFactory(lambda: PassThrough1(), lambda: PassThrough2())
     ptConnector = playground.Connector(protocolStack=f)
     playground.setConnector("passthrough", ptConnector)
-
     loop.set_debug(enabled=True)
-    #dux = EchoClientProtocol(loop)
-    #dux.response('Alice', 'WashingtonDC', 1, 1, '192.168.1.254', 45532, ["G722a", "G729"])
+    #alice = EchoClientProtocol(loop)
+    #alice.response('Alice', 'WashingtonDC', 1, 1, '192.168.1.254', 45532, ["G722a", "G729"])
     conn = playground.getConnector('passthrough').create_playground_connection(lux.send_first_packet, '20174.1.1.1' , 8888)
     #conn = loop.create_connection(lambda: EchoClientProtocol(), '127.0.0.1', port=8000)
     loop.run_until_complete(conn)
