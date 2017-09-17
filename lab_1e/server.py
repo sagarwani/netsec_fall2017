@@ -90,9 +90,10 @@ class EchoServerProtocol(asyncio.Protocol):
         self.codec = codec
         self.payload = payload
 
-    def __init__(self):
+    def __init__(self, loop):
         self.transport = None
         self.invite('Bob', 'California', 1, 1, '10.0.0.1', 65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
+        self.loop = loop
         self._deserializer = PacketType.Deserializer()
 
     def connection_made(self, transport):
@@ -138,6 +139,7 @@ class EchoServerProtocol(asyncio.Protocol):
                 print('\nPacket 5 CLIENT -> SERVER: Call disconnect request from Alice.')
                 print('\t\t\t\t ', packet)
                 self.transport.close()
+                self.loop.stop()
             else:
                 print('Incorrect packet received. Please check the protocol on server side.')
                 self.transport.close()
@@ -156,6 +158,11 @@ class PassThrough1(playground.network.common.StackingProtocol):
         print("\nData Received at PassThrough1. Sending it to higher layer.\n")
         self.higherProtocol().data_received(data)
 
+    def connection_lost(self, exc):
+        self.transport = None
+        print("\nPassThrough1 Connection was Lost with Server because: {}".format(exc))
+        self.transport.close()
+
 
 class PassThrough2(playground.network.common.StackingProtocol):
     def __init__(self):
@@ -170,18 +177,23 @@ class PassThrough2(playground.network.common.StackingProtocol):
         print("\nData Received at PassThrough2. Sending it to higher layer.\n")
         self.higherProtocol().data_received(data)
 
+    def connection_lost(self, exc):
+        self.transport = None
+        print("\nPassThrough2 Connection was Lost with Server because: {}".format(exc))
+        self.transport.close()
+
 
 if __name__ == "__main__":
 
     #p_logging.EnablePresetLogging(p_logging.PRESET_TEST)
     loop = asyncio.get_event_loop()
+    #bob = EchoServerProtocol(loop)
+    #bob.invite('Bob', 'California', 1, 1, '10.0.0.1', 65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
     f = playground.network.common.StackingProtocolFactory(lambda: PassThrough1(), lambda: PassThrough2())
     ptConnector = playground.Connector(protocolStack=f)
     playground.setConnector("passthrough", ptConnector)
     #loop.set_debug(enabled=True)
-    #lux = EchoServerProtocol()
-    #lux.invite('Bob', 'California', 1, 1, '10.0.0.1', 65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
-    conn = playground.getConnector('passthrough').create_playground_server(lambda: EchoServerProtocol() , 8888)
+    conn = playground.getConnector('passthrough').create_playground_server(lambda: EchoServerProtocol(loop) , 8888)
     #conn = loop.create_server(lambda: EchoServerProtocol(), port=8000)
     server = loop.run_until_complete(conn)
     print("Echo Server Started at {}".format(server.sockets[0].gethostname()))
