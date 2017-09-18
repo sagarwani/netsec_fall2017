@@ -2,6 +2,7 @@ from playground.network.packet import PacketType
 from playground.network.packet.fieldtypes import STRING,INT, BOOL, UINT32, ListFieldType
 import asyncio
 import playground
+from playground.network.common.Protocol import StackingTransport, StackingProtocolFactory, StackingProtocol
 from io import StringIO
 from playground.asyncio_lib.testing import TestLoopEx
 from playground.network.testing import MockTransportToStorageStream
@@ -151,7 +152,7 @@ class initiate():
         self.loop = loop
         return EchoClientProtocol(self.loop)
 
-class PassThrough1(playground.network.common.StackingProtocol):
+class PassThrough1(StackingProtocol, StackingTransport):
 
     def __init__(self):
         self.transport = None
@@ -159,7 +160,8 @@ class PassThrough1(playground.network.common.StackingProtocol):
     def connection_made(self, transport):
         print("\nConnection made. Once data is received by PassThrough1, will be sent to higher layer")
         self.transport = transport
-        self.higherProtocol().connection_made(transport)
+        higherTransport = StackingTransport(self.transport)
+        self.higherProtocol().connection_made(higherTransport)
 
     def data_received(self, data):
         print("\nData Received at PassThrough1. Sending it to higher layer.\n")
@@ -171,14 +173,15 @@ class PassThrough1(playground.network.common.StackingProtocol):
         self.transport.close()
 
 
-class PassThrough2(playground.network.common.StackingProtocol):
+class PassThrough2(StackingProtocol, StackingTransport):
     def __init__(self):
         self.transport = None
 
     def connection_made(self, transport):
         print("\nConnection made. Once data is received by PassThrough2, will be sent to higher layer")
         self.transport = transport
-        self.higherProtocol().connection_made(transport)
+        higherTransport = StackingTransport(self.transport)
+        self.higherProtocol().connection_made(higherTransport)
 
     def data_received(self, data):
         print("\nData Received at PassThrough2. Sending it to higher layer.\n")
@@ -194,7 +197,7 @@ if __name__ == "__main__":
     #p_logging.EnablePresetLogging(p_logging.PRESET_TEST)
     loop = asyncio.get_event_loop()
     lux = initiate(loop)
-    f = playground.network.common.StackingProtocolFactory(lambda: PassThrough1(), lambda: PassThrough2())
+    f = StackingProtocolFactory(lambda: PassThrough1(), lambda: PassThrough2())
     ptConnector = playground.Connector(protocolStack=f)
     playground.setConnector("passthrough", ptConnector)
     loop.set_debug(enabled=True)
