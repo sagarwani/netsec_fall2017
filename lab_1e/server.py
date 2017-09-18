@@ -3,7 +3,7 @@ from playground.network.packet.fieldtypes import STRING,INT, BOOL, UINT32, ListF
 import asyncio
 from io import StringIO
 import playground
-import playground.network.common
+from playground.network.common.Protocol import StackingProtocol, StackingTransport, StackingProtocolFactory
 import sys
 from playground.asyncio_lib.testing import TestLoopEx
 from playground.network.testing import MockTransportToStorageStream
@@ -144,7 +144,7 @@ class EchoServerProtocol(asyncio.Protocol):
                 print('Incorrect packet received. Please check the protocol on server side.')
                 self.transport.close()
 
-class PassThrough1(playground.network.common.StackingProtocol):
+class PassThrough1(StackingProtocol, StackingTransport):
 
     def __init__(self):
         self.transport = None
@@ -152,7 +152,8 @@ class PassThrough1(playground.network.common.StackingProtocol):
     def connection_made(self, transport):
         print("\nConnection made. Once data is received by PassThrough1, will be sent to higher layer")
         self.transport = transport
-        self.higherProtocol().connection_made(transport)
+        higherTransport = StackingTransport(self.transport)
+        self.higherProtocol().connection_made(higherTransport)
 
     def data_received(self, data):
         print("\nData Received at PassThrough1. Sending it to higher layer.\n")
@@ -164,14 +165,15 @@ class PassThrough1(playground.network.common.StackingProtocol):
         self.transport.close()
 
 
-class PassThrough2(playground.network.common.StackingProtocol):
+class PassThrough2(StackingProtocol, StackingTransport):
     def __init__(self):
         self.transport = None
 
     def connection_made(self, transport):
         print("\nConnection made. Once data is received by PassThrough2, will be sent to higher layer")
         self.transport = transport
-        self.higherProtocol().connection_made(transport)
+        higherTransport = StackingTransport(self.transport)
+        self.higherProtocol().connection_made(higherTransport)
 
     def data_received(self, data):
         print("\nData Received at PassThrough2. Sending it to higher layer.\n")
@@ -189,7 +191,7 @@ if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     #bob = EchoServerProtocol(loop)
     #bob.invite('Bob', 'California', 1, 1, '10.0.0.1', 65001, ['G711u', 'G729', 'G722', 'OPUS', 'G711a'])
-    f = playground.network.common.StackingProtocolFactory(lambda: PassThrough1(), lambda: PassThrough2())
+    f = StackingProtocolFactory(lambda: PassThrough1(), lambda: PassThrough2())
     ptConnector = playground.Connector(protocolStack=f)
     playground.setConnector("passthrough", ptConnector)
     #loop.set_debug(enabled=True)
